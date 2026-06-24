@@ -1,7 +1,4 @@
 "use client";
-import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Filters, BusinessSize } from "@/lib/types";
 
 interface Props {
@@ -9,131 +6,119 @@ interface Props {
   onChange: (f: Filters) => void;
 }
 
-const SIZES: BusinessSize[] = ["small", "medium", "large"];
+const SIZES: { value: BusinessSize; label: string; desc: string }[] = [
+  { value: "small", label: "Small", desc: "<50 reviews" },
+  { value: "medium", label: "Medium", desc: "50–500" },
+  { value: "large", label: "Large", desc: "500+" },
+];
 
 export function FilterPanel({ filters, onChange }: Props) {
   const toggleSize = (size: BusinessSize) => {
     const current = filters.business_size_tiers ?? [];
-    const next = current.includes(size)
-      ? current.filter((s) => s !== size)
-      : [...current, size];
+    const next = current.includes(size) ? current.filter((s) => s !== size) : [...current, size];
     onChange({ ...filters, business_size_tiers: next.length ? next : undefined });
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
-      <h3 className="font-semibold text-sm text-gray-700">Filters</h3>
-
-      <div className="space-y-1">
-        <span className="text-xs text-gray-600">
-          Min Rating: {filters.min_rating ?? 1.0}
-        </span>
-        <Slider
-          min={1}
-          max={5}
-          step={0.5}
-          value={[filters.min_rating ?? 1.0]}
-          onValueChange={(v) => {
-            const val = Array.isArray(v) ? v[0] : (v as number);
-            onChange({ ...filters, min_rating: val === 1.0 ? undefined : val });
-          }}
-          className="w-full"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs text-gray-600">Min Reviews</label>
-          <Input
-            type="number"
-            placeholder="Any"
-            value={filters.min_reviews ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                min_reviews: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-gray-600">Max Reviews</label>
-          <Input
-            type="number"
-            placeholder="Any"
-            value={filters.max_reviews ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                max_reviews: e.target.value ? Number(e.target.value) : undefined,
-              })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs text-gray-600">Business Size</label>
-        <div className="flex gap-4 mt-1">
-          {SIZES.map((s) => (
-            <div key={s} className="flex items-center gap-1.5">
-              <Checkbox
-                id={`size-${s}`}
-                checked={(filters.business_size_tiers ?? []).includes(s)}
-                onCheckedChange={() => toggleSize(s)}
-              />
-              <label
-                htmlFor={`size-${s}`}
-                className="capitalize text-sm cursor-pointer"
-              >
-                {s}
-              </label>
-            </div>
+    <div className="space-y-5">
+      {/* Rating */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Min Rating</label>
+        <div className="flex gap-2">
+          {[1, 2, 3, 3.5, 4, 4.5, 5].map((r) => (
+            <button
+              key={r}
+              onClick={() => onChange({ ...filters, min_rating: filters.min_rating === r ? undefined : r })}
+              className={`px-2.5 py-1 text-xs rounded-md border transition-all font-mono ${
+                filters.min_rating === r
+                  ? "bg-sky-600 text-white border-sky-600"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"
+              }`}
+            >
+              {r}+
+            </button>
           ))}
         </div>
-        <p className="text-xs text-gray-400">
-          Small &lt;50 reviews · Medium 50–500 · Large 500+
-        </p>
       </div>
 
-      <div className="flex gap-6">
+      {/* Reviews */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Review Count</label>
         <div className="flex items-center gap-2">
-          <Checkbox
-            id="has-website"
-            checked={!!filters.has_website}
-            onCheckedChange={(v) =>
-              onChange({ ...filters, has_website: v ? true : undefined })
-            }
+          <input
+            type="number"
+            placeholder="Min"
+            value={filters.min_reviews ?? ""}
+            onChange={(e) => onChange({ ...filters, min_reviews: e.target.value ? Number(e.target.value) : undefined })}
+            className="w-24 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 font-mono"
           />
-          <label htmlFor="has-website" className="text-sm cursor-pointer">
-            Has Website
-          </label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="has-phone"
-            checked={!!filters.has_phone}
-            onCheckedChange={(v) =>
-              onChange({ ...filters, has_phone: v ? true : undefined })
-            }
+          <span className="text-slate-300 text-sm">—</span>
+          <input
+            type="number"
+            placeholder="Max"
+            value={filters.max_reviews ?? ""}
+            onChange={(e) => onChange({ ...filters, max_reviews: e.target.value ? Number(e.target.value) : undefined })}
+            className="w-24 px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 font-mono"
           />
-          <label htmlFor="has-phone" className="text-sm cursor-pointer">
-            Has Phone
-          </label>
         </div>
       </div>
 
-      <div className="space-y-1">
-        <label className="text-xs text-gray-600">Keyword in Name</label>
-        <Input
-          placeholder="e.g. plumbing"
+      {/* Business size */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Business Size</label>
+        <div className="flex gap-2">
+          {SIZES.map(({ value, label, desc }) => {
+            const selected = (filters.business_size_tiers ?? []).includes(value);
+            return (
+              <button
+                key={value}
+                onClick={() => toggleSize(value)}
+                className={`flex-1 py-2 px-3 text-xs rounded-md border transition-all text-center ${
+                  selected
+                    ? "bg-sky-600 text-white border-sky-600"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"
+                }`}
+              >
+                <div className="font-medium">{label}</div>
+                <div className={`text-[10px] mt-0.5 ${selected ? "text-sky-100" : "text-slate-400"}`}>{desc}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Toggles */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Must Have</label>
+        <div className="flex gap-3">
+          {[
+            { key: "has_website" as const, label: "Website" },
+            { key: "has_phone" as const, label: "Phone" },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => onChange({ ...filters, [key]: filters[key] ? undefined : true })}
+              className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
+                filters[key]
+                  ? "bg-sky-600 text-white border-sky-600"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Keyword in name */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Keyword in Name</label>
+        <input
+          type="text"
+          placeholder="e.g. family, 24/7, express"
           value={filters.keywords_in_name ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...filters,
-              keywords_in_name: e.target.value || undefined,
-            })
-          }
+          onChange={(e) => onChange({ ...filters, keywords_in_name: e.target.value || undefined })}
+          className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder:text-slate-300"
         />
       </div>
     </div>
