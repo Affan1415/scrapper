@@ -5,6 +5,10 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/.env
 backend/leads.db
+__pycache__/
+*.py[cod]
+*.pyo
+.env
 
 # Node
 frontend/node_modules/
