@@ -112,6 +112,13 @@ export default function HistoryPage() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="outline"
+                    onClick={() => handleRerun(job)}
+                  >
+                    Re-run
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="ghost"
                     onClick={() => handleDelete(job)}
                     disabled={deletingId === job.id}
