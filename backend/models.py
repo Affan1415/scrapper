@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Float, Integer, DateTime, Text, JSON, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import relationship
 import enum
@@ -41,11 +41,11 @@ class SearchJob(Base):
     status = Column(SAEnum(JobStatus), default=JobStatus.pending, nullable=False)
     keyword = Column(String, nullable=False)
     location = Column(String, nullable=False)
-    filters = Column(JSON, default={})
+    filters = Column(JSON, default=lambda: {})
     total_found = Column(Integer, default=0)
     total_scraped = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
 
     leads = relationship("Lead", back_populates="job", cascade="all, delete-orphan")
@@ -55,7 +55,7 @@ class Lead(Base):
     __tablename__ = "leads"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    search_job_id = Column(String, ForeignKey("search_jobs.id"), nullable=False)
+    search_job_id = Column(String, ForeignKey("search_jobs.id"), nullable=False, index=True)
     business_name = Column(String, nullable=False)
     category = Column(String, nullable=True)
     address = Column(String, nullable=True)
@@ -71,8 +71,8 @@ class Lead(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     google_maps_url = Column(String, nullable=True)
-    status = Column(SAEnum(LeadStatus), default=LeadStatus.new)
+    status = Column(SAEnum(LeadStatus), default=LeadStatus.new, nullable=False)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     job = relationship("SearchJob", back_populates="leads")
