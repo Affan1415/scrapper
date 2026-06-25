@@ -36,6 +36,31 @@ class JobResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class GroupInLead(BaseModel):
+    id: str
+    name: str
+    color: str
+    model_config = {"from_attributes": True}
+
+
+class GroupSummary(BaseModel):
+    id: str
+    name: str
+    color: str
+    lead_count: int = 0
+    model_config = {"from_attributes": True}
+
+
+class CreateGroupRequest(BaseModel):
+    name: str
+    color: str = "#0369A1"
+
+
+class UpdateGroupRequest(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
 class LeadResponse(BaseModel):
     id: str
     search_job_id: str
@@ -57,6 +82,7 @@ class LeadResponse(BaseModel):
     status: LeadStatus
     notes: Optional[str] = None
     created_at: datetime
+    groups: List[GroupInLead] = []
 
     model_config = {"from_attributes": True}
 
