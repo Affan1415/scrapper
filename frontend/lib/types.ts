@@ -2,6 +2,13 @@ export type JobStatus = "pending" | "running" | "done" | "failed";
 export type LeadStatus = "new" | "contacted" | "qualified" | "rejected";
 export type BusinessSize = "small" | "medium" | "large";
 
+export interface Group {
+  id: string;
+  name: string;
+  color: string;
+  lead_count: number;
+}
+
 export interface Filters {
   min_rating?: number;
   max_rating?: number;
@@ -47,4 +54,5 @@ export interface Lead {
   status: LeadStatus;
   notes?: string;
   created_at: string;
+  groups?: Group[];
 }

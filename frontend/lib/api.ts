@@ -25,7 +25,7 @@ export const api = {
       apiFetch<{ ok: boolean }>(`/api/jobs/${id}`, { method: "DELETE" }),
   },
   leads: {
-    list: (params?: { job_id?: string; status?: string }) => {
+    list: (params?: { job_id?: string; status?: string; group_id?: string }) => {
       const qs = params
         ? new URLSearchParams(
             Object.fromEntries(
@@ -52,5 +52,28 @@ export const api = {
       const qs = jobId ? `?job_id=${jobId}` : "";
       window.open(`${BASE_URL}/api/leads/export/xlsx${qs}`);
     },
+  },
+  groups: {
+    list: () => apiFetch<import("./types").Group[]>("/api/groups"),
+    create: (name: string, color: string) =>
+      apiFetch<import("./types").Group>("/api/groups", {
+        method: "POST",
+        body: JSON.stringify({ name, color }),
+      }),
+    update: (id: string, data: { name?: string; color?: string }) =>
+      apiFetch<import("./types").Group>(`/api/groups/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/api/groups/${id}`, { method: "DELETE" }),
+    addLead: (groupId: string, leadId: string) =>
+      apiFetch<{ ok: boolean }>(`/api/groups/${groupId}/leads/${leadId}`, {
+        method: "POST",
+      }),
+    removeLead: (groupId: string, leadId: string) =>
+      apiFetch<{ ok: boolean }>(`/api/groups/${groupId}/leads/${leadId}`, {
+        method: "DELETE",
+      }),
   },
 };
