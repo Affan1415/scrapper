@@ -50,6 +50,7 @@ def export_xlsx(job_id: Optional[str] = None, db: Session = Depends(get_db)):
 @router.get("", response_model=List[LeadResponse])
 def list_leads(
     job_id: Optional[str] = None,
+    group_id: Optional[str] = None,
     status: Optional[LeadStatus] = None,
     sort_by: str = "created_at",
     sort_dir: str = "desc",
@@ -60,6 +61,11 @@ def list_leads(
     q = db.query(Lead)
     if job_id:
         q = q.filter(Lead.search_job_id == job_id)
+    if group_id:
+        from ..models import LeadGroup
+        q = q.join(LeadGroup, Lead.id == LeadGroup.lead_id).filter(
+            LeadGroup.group_id == group_id
+        )
     if status:
         q = q.filter(Lead.status == status)
     sort_col = getattr(Lead, sort_by, Lead.created_at)
