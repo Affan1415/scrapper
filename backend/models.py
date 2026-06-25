@@ -76,3 +76,22 @@ class Lead(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     job = relationship("SearchJob", back_populates="leads")
+    groups = relationship("Group", secondary="lead_groups", back_populates="leads")
+
+
+class Group(Base):
+    __tablename__ = "groups"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    color = Column(String, nullable=False, default="#0369A1")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    leads = relationship("Lead", secondary="lead_groups", back_populates="groups")
+
+
+class LeadGroup(Base):
+    __tablename__ = "lead_groups"
+
+    lead_id = Column(String, ForeignKey("leads.id", ondelete="CASCADE"), primary_key=True)
+    group_id = Column(String, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True)
