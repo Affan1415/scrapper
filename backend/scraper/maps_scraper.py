@@ -1,7 +1,7 @@
 import re
 import asyncio
 from typing import Optional, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from playwright.async_api import async_playwright, Page, TimeoutError as PlaywrightTimeout
 
 
@@ -23,7 +23,11 @@ class BusinessData:
 
 
 def _parse_review_count(text: str) -> Optional[int]:
-    """Parse '(1,234)' or '1,234 reviews' to int."""
+    # Extract number from parentheses: "4.9\n(848)" → 848
+    m = re.search(r"\(([0-9,]+)\)", text)
+    if m:
+        return int(m.group(1).replace(",", ""))
+    # Fallback: strip all non-digits (only if no decimal point present)
     digits = re.sub(r"[^\d]", "", text)
     return int(digits) if digits else None
 
@@ -33,73 +37,87 @@ def _parse_rating(text: str) -> Optional[float]:
     return float(match.group(1)) if match else None
 
 
-async def _extract_business_from_panel(page: Page) -> Optional[BusinessData]:
+def _parse_lat_lng(url: str) -> tuple[Optional[float], Optional[float]]:
+    m = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", url)
+    if m:
+        return float(m.group(1)), float(m.group(2))
+    return None, None
+
+
+async def _extract_business_from_panel(page: Page, card_url: Optional[str] = None) -> Optional[BusinessData]:
     """
     Extract structured data from the open business detail panel.
-    Patterns harvested from omkarcloud/google-maps-scraper.
+    Uses selectors verified against live Google Maps DOM (June 2026).
     """
+    # Name — .DUwDvf is the current panel heading class
     try:
-        name_el = page.locator('h1').first
-        name = await name_el.inner_text(timeout=3000)
+        name_el = page.locator(".DUwDvf").first
+        name = await name_el.inner_text(timeout=4000)
+        if not name or not name.strip():
+            return None
     except Exception:
         return None
 
     data = BusinessData(business_name=name.strip())
 
-    # Category
+    # Category — .DkEaL is the category button
     try:
-        category_el = page.locator('button[jsaction*="category"]').first
-        data.category = (await category_el.inner_text(timeout=2000)).strip()
+        cat_el = page.locator(".DkEaL").first
+        data.category = (await cat_el.inner_text(timeout=2000)).strip()
     except Exception:
         pass
 
-    # Rating from aria-label (e.g. "4.5 stars")
+    # Rating — .MW4etd contains just the number e.g. "4.9"
     try:
-        rating_el = page.locator('[aria-label*="stars"]').first
-        aria = await rating_el.get_attribute("aria-label", timeout=2000)
+        rating_el = page.locator(".MW4etd").first
+        txt = await rating_el.inner_text(timeout=2000)
+        data.rating = _parse_rating(txt)
+    except Exception:
+        pass
+
+    # Review count — .dmRWX contains "4.9\n(848)"
+    try:
+        review_el = page.locator(".dmRWX").first
+        txt = await review_el.inner_text(timeout=2000)
+        data.review_count = _parse_review_count(txt)
+    except Exception:
+        pass
+
+    # Phone — button with aria-label "Phone: +1 512-717-3147"
+    try:
+        phone_btn = page.locator('button[aria-label*="Phone"]').first
+        aria = await phone_btn.get_attribute("aria-label", timeout=2000)
         if aria:
-            data.rating = _parse_rating(aria)
+            data.phone = aria.replace("Phone:", "").strip().rstrip()
     except Exception:
         pass
 
-    # Review count from aria-label (e.g. "1,234 reviews")
+    # Address — button with aria-label "Address: 1700 S 1st St..."
     try:
-        review_el = page.locator('[aria-label*="reviews"]').first
-        aria = await review_el.get_attribute("aria-label", timeout=2000)
+        addr_btn = page.locator('button[aria-label*="Address"]').first
+        aria = await addr_btn.get_attribute("aria-label", timeout=2000)
         if aria:
-            data.review_count = _parse_review_count(aria)
+            data.address = aria.replace("Address:", "").strip().rstrip()
     except Exception:
         pass
 
-    # Address, phone, website from data-item-id buttons
+    # Website — anchor with aria-label "Website: ..."
     try:
-        buttons = await page.locator('[data-item-id]').all()
-        for btn in buttons[:20]:  # cap at 20 to avoid slow loops
-            try:
-                item_id = await btn.get_attribute("data-item-id", timeout=500)
-                text = await btn.inner_text(timeout=500)
-                if not item_id or not text:
-                    continue
-                item_id_lower = item_id.lower()
-                if "address" in item_id_lower:
-                    data.address = text.strip()
-                elif "phone" in item_id_lower:
-                    data.phone = text.strip()
-                elif "authority" in item_id_lower:
-                    data.website = text.strip()
-            except Exception:
-                continue
+        web_link = page.locator('a[aria-label*="Website"]').first
+        href = await web_link.get_attribute("href", timeout=2000)
+        data.website = href
     except Exception:
         pass
 
-    # Lat/lng from URL
+    # Lat/lng from current page URL (detail panel URL has @lat,lng)
     try:
-        current_url = page.url
-        data.google_maps_url = current_url
-        lat_lng = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", current_url)
-        if lat_lng:
-            data.latitude = float(lat_lng.group(1))
-            data.longitude = float(lat_lng.group(2))
+        panel_url = page.url
+        data.google_maps_url = panel_url
+        data.latitude, data.longitude = _parse_lat_lng(panel_url)
+        # If panel URL has no coords, fall back to card URL
+        if data.latitude is None and card_url:
+            data.latitude, data.longitude = _parse_lat_lng(card_url)
+            data.google_maps_url = card_url
     except Exception:
         pass
 
@@ -114,8 +132,10 @@ async def scrape_google_maps(
 ) -> list[BusinessData]:
     """
     Scrape Google Maps for businesses matching keyword in location.
-    Calls on_business_found callback for each business as it is found.
-    Patterns harvested from: omkarcloud/google-maps-scraper, gosom/google-maps-scraper
+    Selectors verified against live Google Maps DOM (June 2026).
+    Cards: .Nv2PK | Detail panel: .DUwDvf, .DkEaL, .MW4etd, .dmRWX
+    Phone: button[aria-label*=Phone] | Address: button[aria-label*=Address]
+    Website: a[aria-label*=Website]
     """
     results: list[BusinessData] = []
     search_query = f"{keyword} in {location}"
@@ -134,14 +154,15 @@ async def scrape_google_maps(
 
         encoded = search_query.replace(" ", "+")
         await page.goto(f"https://www.google.com/maps/search/{encoded}", timeout=30000)
-        await page.wait_for_timeout(2000)
+        await page.wait_for_timeout(3000)
 
         results_panel = page.locator('[role="feed"]')
         previous_count = 0
         stale_rounds = 0
 
         while len(results) < max_results and stale_rounds < 5:
-            cards = await page.locator('[role="feed"] > div[jsaction]').all()
+            # .Nv2PK is the current card container class
+            cards = await page.locator(".Nv2PK").all()
             current_count = len(cards)
 
             if current_count == previous_count:
@@ -157,17 +178,22 @@ async def scrape_google_maps(
                 if len(results) >= max_results:
                     break
                 try:
+                    # Get the place URL before clicking (for lat/lng)
+                    card_link = card.locator("a.hfpxzc").first
+                    card_url = await card_link.get_attribute("href", timeout=1000)
+
                     await card.click(timeout=3000)
-                    await page.wait_for_timeout(1500)
-                    business = await _extract_business_from_panel(page)
+                    await page.wait_for_timeout(2500)
+
+                    business = await _extract_business_from_panel(page, card_url)
                     if business:
                         results.append(business)
                         on_business_found(business)
                 except Exception:
                     continue
 
-            await results_panel.evaluate("el => el.scrollBy(0, 1000)")
-            await page.wait_for_timeout(1000)
+            await results_panel.evaluate("el => el.scrollBy(0, 1200)")
+            await page.wait_for_timeout(1200)
 
         await browser.close()
 
