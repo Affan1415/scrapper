@@ -15,6 +15,11 @@ frontend/node_modules/
 frontend/.next/
 frontend/.env.local
 
+# Database
+leads.db
+
 # General
 .DS_Store
 *.log
+*.tsbuildinfo
+frontend/next-env.d.ts

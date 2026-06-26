@@ -18,7 +18,10 @@ async def create_job(
     job = SearchJob(
         keyword=request.keyword,
         location=request.location,
-        filters=request.filters.model_dump(exclude_none=True),
+        filters={
+            **request.filters.model_dump(exclude_none=True),
+            "_concurrency": max(1, min(10, request.concurrency)),
+        },
     )
     db.add(job)
     db.commit()

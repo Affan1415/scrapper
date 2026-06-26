@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional, List
 from datetime import datetime
 from .models import JobStatus, LeadStatus, BusinessSize
@@ -19,6 +19,7 @@ class CreateJobRequest(BaseModel):
     keyword: str
     location: str
     filters: FiltersSchema = FiltersSchema()
+    concurrency: int = 5  # parallel email scrapers, 1–10
 
 
 class JobResponse(BaseModel):
@@ -27,6 +28,7 @@ class JobResponse(BaseModel):
     keyword: str
     location: str
     filters: dict
+    concurrency: int = 5
     total_found: int
     total_scraped: int
     created_at: datetime
@@ -34,6 +36,11 @@ class JobResponse(BaseModel):
     error_message: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def extract_concurrency(self) -> "JobResponse":
+        self.concurrency = int((self.filters or {}).get("_concurrency", 5))
+        return self
 
 
 class GroupInLead(BaseModel):

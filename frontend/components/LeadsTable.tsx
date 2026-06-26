@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Download, FileSpreadsheet, Star, Globe, Phone, Mail, MapPin, Plus, X } from "lucide-react";
+import { Download, FileSpreadsheet, Star, Globe, Phone, Mail, MapPin, Plus, X, Search, SlidersHorizontal } from "lucide-react";
 import { api } from "@/lib/api";
-import { Lead, LeadStatus, Group } from "@/lib/types";
+import { Lead, LeadStatus, BusinessSize, Group } from "@/lib/types";
 
 const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string }> = {
   new:       { label: "New",       color: "bg-slate-100 text-slate-600" },
@@ -22,6 +22,24 @@ interface Props {
 export function LeadsTable({ leads, jobId, allGroups, onLeadUpdated, onGroupsChanged }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notesValue, setNotesValue] = useState("");
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [hasEmail, setHasEmail] = useState(false);
+  const [hasPhone, setHasPhone] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
+  const [sizeFilter, setSizeFilter] = useState<BusinessSize | "">("");
+
+  const filtered = leads.filter((l) => {
+    if (search && !l.business_name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (hasEmail && !l.email) return false;
+    if (hasPhone && !l.phone) return false;
+    if (statusFilter && l.status !== statusFilter) return false;
+    if (sizeFilter && l.business_size_tier !== sizeFilter) return false;
+    return true;
+  });
+
+  const activeFilterCount = [hasEmail, hasPhone, !!statusFilter, !!sizeFilter].filter(Boolean).length;
 
   const updateStatus = async (lead: Lead, status: LeadStatus) => {
     const updated = await api.leads.update(lead.id, { status });
@@ -66,12 +84,16 @@ export function LeadsTable({ leads, jobId, allGroups, onLeadUpdated, onGroupsCha
   const phoneCount = leads.filter((l) => l.phone).length;
 
   return (
-    <div className="space-y-4">
-      {/* Stats bar */}
+    <div className="space-y-3">
+      {/* Stats + export */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <span className="text-sm text-slate-500">
-            <span className="text-slate-900 font-semibold font-mono">{leads.length}</span> leads
+            <span className="text-slate-900 font-semibold font-mono">{filtered.length}</span>
+            {filtered.length !== leads.length && (
+              <span className="text-slate-400 font-mono"> / {leads.length}</span>
+            )}
+            {" "}leads
           </span>
           <span className="text-sm text-slate-500">
             <span className="text-emerald-600 font-semibold font-mono">{emailCount}</span> with email
@@ -96,12 +118,96 @@ export function LeadsTable({ leads, jobId, allGroups, onLeadUpdated, onGroupsCha
         </div>
       </div>
 
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent w-48 placeholder:text-slate-400"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+
+        {/* Has email toggle */}
+        <button
+          onClick={() => setHasEmail(!hasEmail)}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border font-medium transition-all ${
+            hasEmail
+              ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+          }`}
+        >
+          <Mail className="w-3.5 h-3.5" /> Has email
+        </button>
+
+        {/* Has phone toggle */}
+        <button
+          onClick={() => setHasPhone(!hasPhone)}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border font-medium transition-all ${
+            hasPhone
+              ? "bg-sky-50 border-sky-300 text-sky-700"
+              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+          }`}
+        >
+          <Phone className="w-3.5 h-3.5" /> Has phone
+        </button>
+
+        {/* Status filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as LeadStatus | "")}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+            statusFilter ? "bg-violet-50 border-violet-300 text-violet-700" : "bg-white border-slate-200 text-slate-500"
+          }`}
+        >
+          <option value="">All statuses</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="rejected">Rejected</option>
+        </select>
+
+        {/* Size filter */}
+        <select
+          value={sizeFilter}
+          onChange={(e) => setSizeFilter(e.target.value as BusinessSize | "")}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+            sizeFilter ? "bg-amber-50 border-amber-300 text-amber-700" : "bg-white border-slate-200 text-slate-500"
+          }`}
+        >
+          <option value="">All sizes</option>
+          <option value="small">Small</option>
+          <option value="medium">Medium</option>
+          <option value="large">Large</option>
+        </select>
+
+        {/* Clear all */}
+        {(activeFilterCount > 0 || search) && (
+          <button
+            onClick={() => { setSearch(""); setHasEmail(false); setHasPhone(false); setStatusFilter(""); setSizeFilter(""); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <X className="w-3 h-3" /> Clear
+          </button>
+        )}
+      </div>
+
       {/* Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">#</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Business</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Rating</th>
@@ -112,12 +218,16 @@ export function LeadsTable({ leads, jobId, allGroups, onLeadUpdated, onGroupsCha
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {leads.map((lead) => {
+              {filtered.map((lead, idx) => {
                 const availableGroups = allGroups.filter(
                   (g) => !(lead.groups ?? []).some((lg) => lg.id === g.id)
                 );
                 return (
                   <tr key={lead.id} className="hover:bg-slate-50 transition-colors group">
+                    {/* Sr. No. */}
+                    <td className="px-4 py-3 text-xs font-mono text-slate-400 w-10 select-none">
+                      {idx + 1}
+                    </td>
                     {/* Business */}
                     <td className="px-4 py-3">
                       <div className="max-w-[200px]">
@@ -296,15 +406,24 @@ export function LeadsTable({ leads, jobId, allGroups, onLeadUpdated, onGroupsCha
           </table>
         </div>
 
-        {leads.length === 0 && (
+        {filtered.length === 0 && (
           <div className="py-16 text-center">
             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <svg className="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
             </div>
-            <p className="text-sm font-medium text-slate-500">No leads yet</p>
-            <p className="text-xs text-slate-400 mt-1">Start a search to collect business leads</p>
+            {leads.length > 0 ? (
+              <>
+                <p className="text-sm font-medium text-slate-500">No leads match your filters</p>
+                <p className="text-xs text-slate-400 mt-1">Try adjusting or clearing the filters</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-slate-500">No leads yet</p>
+                <p className="text-xs text-slate-400 mt-1">Start a search to collect business leads</p>
+              </>
+            )}
           </div>
         )}
       </div>

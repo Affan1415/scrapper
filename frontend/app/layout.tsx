@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { RunningJobsIndicator } from "@/components/RunningJobsIndicator";
 
 export const metadata: Metadata = {
   title: "LeadScraper — Google Maps Lead Generation",
@@ -37,11 +38,12 @@ export default function RootLayout({
                 </a>
               </nav>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-mono">
-                localhost:8000
-              </span>
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Backend connected"/>
+            <div className="flex items-center gap-3">
+              <RunningJobsIndicator />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-mono">localhost:8000</span>
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Backend connected"/>
+              </div>
             </div>
           </div>
         </header>

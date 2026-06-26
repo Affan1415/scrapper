@@ -13,10 +13,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   jobs: {
-    create: (keyword: string, location: string, filters: object) =>
+    create: (keyword: string, location: string, filters: object, concurrency = 5) =>
       apiFetch<import("./types").SearchJob>("/api/jobs", {
         method: "POST",
-        body: JSON.stringify({ keyword, location, filters }),
+        body: JSON.stringify({ keyword, location, filters, concurrency }),
       }),
     list: () => apiFetch<import("./types").SearchJob[]>("/api/jobs"),
     get: (id: string) =>

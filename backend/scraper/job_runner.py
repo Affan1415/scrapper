@@ -35,8 +35,8 @@ async def run_scrape_job(job_id: str, db: Session) -> None:
     Orchestrates a full scrape job:
     1. Load job from DB, mark as running
     2. Scrape Google Maps (streams results via callback)
-    3. For each matching business, enrich with email from website
-    4. Save each lead to DB immediately for live progress polling
+    3. Enrich all matching businesses with email in parallel (semaphore-limited)
+    4. Save each lead to DB as it completes for live progress polling
     5. Mark job done or failed
     """
     job = db.get(SearchJob, job_id)
@@ -47,6 +47,8 @@ async def run_scrape_job(job_id: str, db: Session) -> None:
     db.commit()
 
     filters = FiltersSchema(**(job.filters or {}))
+    concurrency = int((job.filters or {}).get("_concurrency", 5))
+    sem = asyncio.Semaphore(concurrency)
 
     try:
         def on_business_found(business: BusinessData) -> None:
@@ -60,34 +62,35 @@ async def run_scrape_job(job_id: str, db: Session) -> None:
             max_results=200,
         )
 
-        for business in businesses:
-            if not _passes_filters(business, filters):
-                continue
+        filtered = [b for b in businesses if _passes_filters(b, filters)]
 
-            email: str | None = None
-            if business.website:
-                email = await scrape_email_from_website(business.website)
+        async def enrich_and_save(business: BusinessData) -> None:
+            async with sem:
+                email: str | None = None
+                if business.website:
+                    email = await scrape_email_from_website(business.website)
 
-            size_tier = _size_tier(business.review_count or 0)
+                size_tier = _size_tier(business.review_count or 0)
+                lead = Lead(
+                    search_job_id=job_id,
+                    business_name=business.business_name,
+                    category=business.category,
+                    address=business.address,
+                    phone=business.phone,
+                    website=business.website,
+                    email=email,
+                    rating=business.rating,
+                    review_count=business.review_count,
+                    business_size_tier=size_tier,
+                    latitude=business.latitude,
+                    longitude=business.longitude,
+                    google_maps_url=business.google_maps_url,
+                )
+                db.add(lead)
+                job.total_scraped += 1
+                db.commit()
 
-            lead = Lead(
-                search_job_id=job_id,
-                business_name=business.business_name,
-                category=business.category,
-                address=business.address,
-                phone=business.phone,
-                website=business.website,
-                email=email,
-                rating=business.rating,
-                review_count=business.review_count,
-                business_size_tier=size_tier,
-                latitude=business.latitude,
-                longitude=business.longitude,
-                google_maps_url=business.google_maps_url,
-            )
-            db.add(lead)
-            job.total_scraped += 1
-            db.commit()
+        await asyncio.gather(*[enrich_and_save(b) for b in filtered])
 
         job.status = JobStatus.done
         job.completed_at = datetime.now(timezone.utc)

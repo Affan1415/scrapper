@@ -12,6 +12,7 @@ export default function SearchPage() {
   const [location, setLocation] = useState("");
   const [filters, setFilters] = useState<Filters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [concurrency, setConcurrency] = useState(5);
   const [activeJob, setActiveJob] = useState<SearchJob | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export default function SearchPage() {
     setLoading(true);
     setError(null);
     try {
-      const job = await api.jobs.create(keyword.trim(), location.trim(), filters);
+      const job = await api.jobs.create(keyword.trim(), location.trim(), filters, concurrency);
       setActiveJob(job);
       startPolling(job.id);
     } catch (e) {
@@ -117,6 +118,39 @@ export default function SearchPage() {
                 <FilterPanel filters={filters} onChange={setFilters} />
               </div>
             )}
+
+            {/* Concurrency slider */}
+            <div className="border-t border-slate-100 pt-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  <span className="text-xs font-medium text-slate-600">Email scraping speed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400">
+                    {concurrency <= 3 ? "Careful" : concurrency <= 6 ? "Balanced" : "Fast"}
+                  </span>
+                  <span className="text-xs font-mono font-semibold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded">
+                    {concurrency}×
+                  </span>
+                </div>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={concurrency}
+                onChange={(e) => setConcurrency(Number(e.target.value))}
+                className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-sky-500"
+              />
+              <div className="flex justify-between text-[10px] text-slate-300 px-0.5">
+                <span>1</span>
+                <span>5</span>
+                <span>10</span>
+              </div>
+            </div>
 
             {error && (
               <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2.5 rounded-lg">

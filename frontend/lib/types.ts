@@ -26,6 +26,7 @@ export interface SearchJob {
   keyword: string;
   location: string;
   filters: Filters;
+  concurrency: number;
   total_found: number;
   total_scraped: number;
   created_at: string;
