@@ -1,34 +1,27 @@
-# Python
+# Python dependencies
 backend/venv/
 backend/__pycache__/
 backend/**/__pycache__/
 backend/*.pyc
-backend/.env
-backend/leads.db
-__pycache__/
 *.py[cod]
 *.pyo
-.env
+__pycache__/
 
-# Node
+# Node dependencies
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local
+frontend/next-env.d.ts
 
-# Secrets
-backend/credentials.json
-*.json.key
-*.json.key
-vocal-framework-*.json
-
-# Data files
-*.xlsx
+# Env / secrets (keep out even on private)
+.env
+backend/.env
 
 # Database
 leads.db
+backend/leads.db
 
 # General
 .DS_Store
 *.log
 *.tsbuildinfo
-frontend/next-env.d.ts
