@@ -1,8 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine
 from . import models
-from .routers import jobs, leads, groups
+from .routers import jobs, leads, groups, sheets
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -23,6 +26,7 @@ app.add_middleware(
 app.include_router(jobs.router)
 app.include_router(leads.router)
 app.include_router(groups.router)
+app.include_router(sheets.router)
 
 
 @app.get("/api/health")

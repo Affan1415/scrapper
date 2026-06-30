@@ -96,6 +96,17 @@ async def run_scrape_job(job_id: str, db: Session) -> None:
         job.completed_at = datetime.now(timezone.utc)
         db.commit()
 
+        # Auto-export leads to the output sheet
+        try:
+            from ..services import sheets_service
+            if sheets_service.credentials_exist():
+                leads = db.query(Lead).filter(Lead.search_job_id == job_id).all()
+                sheets_service.append_leads_to_output(leads, job.location)
+                # Note: row strikethrough is handled by sheet_runner after ALL
+                # locations for a business type finish, not here per-job.
+        except Exception:
+            pass
+
     except Exception as e:
         job.status = JobStatus.failed
         job.error_message = str(e)

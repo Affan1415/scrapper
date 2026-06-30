@@ -34,6 +34,31 @@ export interface SearchJob {
   error_message?: string;
 }
 
+export interface SheetStatus {
+  connected: boolean;
+  input_sheet_id: string;
+  output_sheet_id: string;
+  error?: string;
+}
+
+export interface SheetRow {
+  keyword: string;
+  location: string;
+  row: number;
+  status: string;
+}
+
+export interface SheetGroupedRow {
+  keyword: string;
+  locations: { location: string; row: number; col: number; status: string }[];
+}
+
+export interface ImportResponse {
+  imported: number;
+  skipped: number;
+  job_ids: string[];
+}
+
 export interface Lead {
   id: string;
   search_job_id: string;

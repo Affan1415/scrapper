@@ -15,6 +15,15 @@ frontend/node_modules/
 frontend/.next/
 frontend/.env.local
 
+# Secrets
+backend/credentials.json
+*.json.key
+*.json.key
+vocal-framework-*.json
+
+# Data files
+*.xlsx
+
 # Database
 leads.db
 

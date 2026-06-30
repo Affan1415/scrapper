@@ -53,6 +53,19 @@ export const api = {
       window.open(`${BASE_URL}/api/leads/export/xlsx${qs}`);
     },
   },
+  sheets: {
+    status: () =>
+      apiFetch<import("./types").SheetStatus>("/api/sheets/status"),
+    inputRows: () =>
+      apiFetch<import("./types").SheetRow[]>("/api/sheets/input-rows"),
+    inputRowsGrouped: () =>
+      apiFetch<import("./types").SheetGroupedRow[]>("/api/sheets/input-rows/grouped"),
+    import: (skipDone = true, parallelJobs = 10) =>
+      apiFetch<import("./types").ImportResponse>(
+        `/api/sheets/import?skip_done=${skipDone}&parallel_jobs=${parallelJobs}`,
+        { method: "POST" }
+      ),
+  },
   groups: {
     list: () => apiFetch<import("./types").Group[]>("/api/groups"),
     create: (name: string, color: string) =>
