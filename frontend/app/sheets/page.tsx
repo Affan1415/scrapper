@@ -34,7 +34,7 @@ export default function SheetsPage() {
   const [importResult, setImportResult] = useState<ImportResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [parallelJobs, setParallelJobs] = useState(10);
+  const [parallelJobs, setParallelJobs] = useState(3);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Check if any row is actively running/queued
