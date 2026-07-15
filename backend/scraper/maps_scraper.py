@@ -83,7 +83,7 @@ async def _extract_business_from_panel(page: Page, card_url: Optional[str] = Non
     except Exception:
         pass
 
-    # Phone — button with aria-label "Phone: +1 512-717-3147"
+    # Phone — button with aria-label "Phone: +1 512-717-3147", or tel: link
     try:
         phone_btn = page.locator('button[aria-label*="Phone"]').first
         aria = await phone_btn.get_attribute("aria-label", timeout=2000)
@@ -91,6 +91,14 @@ async def _extract_business_from_panel(page: Page, card_url: Optional[str] = Non
             data.phone = aria.replace("Phone:", "").strip().rstrip()
     except Exception:
         pass
+    if not data.phone:
+        try:
+            tel_link = page.locator('a[href^="tel:"]').first
+            href = await tel_link.get_attribute("href", timeout=2000)
+            if href:
+                data.phone = href.replace("tel:", "").strip()
+        except Exception:
+            pass
 
     # Address — button with aria-label "Address: 1700 S 1st St..."
     try:
