@@ -200,7 +200,20 @@ async def scrape_google_maps(
                 except Exception:
                     continue
 
-            await results_panel.evaluate("el => el.scrollBy(0, 1200)")
+            # Close any open detail panel before scrolling the results list
+            try:
+                await page.keyboard.press("Escape")
+                await page.wait_for_timeout(400)
+            except Exception:
+                pass
+
+            try:
+                await results_panel.evaluate("el => el.scrollBy(0, 1200)")
+            except PlaywrightTimeout:
+                # Feed element not ready (detail panel still active) — fall back
+                await page.evaluate(
+                    "document.querySelector('[role=\"feed\"]')?.scrollBy(0, 1200)"
+                )
             await page.wait_for_timeout(1200)
 
         await browser.close()

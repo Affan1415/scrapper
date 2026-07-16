@@ -14,7 +14,6 @@ frontend/.env.local
 frontend/next-env.d.ts
 
 # Env / secrets (keep out even on private)
-.env
 backend/.env
 
 # Database
@@ -25,3 +24,8 @@ backend/leads.db
 .DS_Store
 *.log
 *.tsbuildinfo
+config.bat
+node_modules
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
